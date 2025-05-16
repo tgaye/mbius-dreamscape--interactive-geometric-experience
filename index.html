@@ -1,0 +1,366 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Möbius Dreamscape | Interactive Geometric Experience</title>
+    <link rel="icon" type="image/png" href="http://localhost:3001/output_images/maq604ct-j7e2f0wt/favicon-geometric-dream-icon_32x32.png">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a12;
+            color: #e0e0ff;
+            font-family: 'Orbitron', 'Segoe UI', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            cursor: crosshair;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(90deg, #8a2be2, #00bfff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 10px rgba(138, 43, 226, 0.3);
+            letter-spacing: 2px;
+        }
+
+        p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 3;
+            pointer-events: all;
+        }
+
+        button {
+            background: rgba(138, 43, 226, 0.2);
+            color: #e0e0ff;
+            border: 1px solid #8a2be2;
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        button:hover {
+            background: rgba(138, 43, 226, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(138, 43, 226, 0.3);
+        }
+
+        .info-panel {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(10, 10, 18, 0.7);
+            border: 1px solid #8a2be2;
+            border-radius: 10px;
+            padding: 1rem;
+            max-width: 300px;
+            backdrop-filter: blur(5px);
+            pointer-events: all;
+        }
+
+        .info-panel h3 {
+            color: #00bfff;
+            margin-bottom: 0.5rem;
+        }
+
+        .copyright {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            font-size: 0.8rem;
+            opacity: 0.6;
+            z-index: 3;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+            .content {
+                padding: 1rem;
+            }
+            .info-panel {
+                max-width: 200px;
+                top: 1rem;
+                right: 1rem;
+            }
+        }
+    </style>
+
+<base target="_self">
+
+
+    </head><body><div id="canvas-container"></div>
+    
+    <div class="content">
+        <h1>Möbius Dreamscape</h1>
+        <p>An interactive exploration of geometric transformations where forms fluidly morph through impossible dimensions. Move your cursor to influence the distortions.</p>
+    </div>
+
+    <div class="info-panel">
+        <h3>Interactive Controls</h3>
+        <p>Mouse position warps the geometry. Scroll to zoom. Click to change forms.</p>
+    </div>
+
+    <div class="controls">
+        <button id="changeShape">Change Form</button>
+        <button id="toggleWarp">Toggle Warp</button>
+        <button id="colorShift">Shift Colors</button>
+    </div>
+
+    <div class="copyright">© 2025 Geometric Dreams Interactive</div>
+
+    <script>
+        // Three.js initialization
+        let scene, camera, renderer, geometry, material, mesh;
+        let warpEnabled = true;
+        let colorShift = 0;
+        let mouseX = 0, mouseY = 0;
+        let currentShape = 'torus';
+
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a12);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Create initial geometry
+            createGeometry('torus');
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('wheel', onMouseWheel);
+            document.getElementById('changeShape').addEventListener('click', changeShape);
+            document.getElementById('toggleWarp').addEventListener('click', toggleWarp);
+            document.getElementById('colorShift').addEventListener('click', shiftColors);
+            document.addEventListener('click', onClick);
+            
+            // Start animation loop
+            animate();
+        }
+
+        function createGeometry(shapeType) {
+            // Remove existing mesh if present
+            if (mesh) {
+                scene.remove(mesh);
+                if (mesh.geometry) mesh.geometry.dispose();
+                if (mesh.material) mesh.material.dispose();
+            }
+            
+            // Create new geometry based on shape type
+            switch (shapeType) {
+                case 'torus':
+                    geometry = new THREE.TorusGeometry(1, 0.4, 16, 100);
+                    break;
+                case 'klein':
+                    geometry = createKleinBottle();
+                    break;
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(1.5, 64, 64);
+                    break;
+                case 'mobius':
+                    geometry = createMobiusStrip();
+                    break;
+            }
+            
+            // Material with wireframe and glow effect
+            material = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(`hsl(${colorShift}, 80%, 60%)`),
+                emissive: new THREE.Color(`hsl(${(colorShift + 120) % 360}, 60%, 30%)`),
+                emissiveIntensity: 0.5,
+                metalness: 0.7,
+                roughness: 0.3,
+                wireframe: true,
+                side: THREE.DoubleSide
+            });
+            
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+            
+            // Add ambient and directional light
+            const ambientLight = new THREE.AmbientLight(0x404040);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+        }
+
+        function createKleinBottle() {
+            const points = [];
+            const segments = 100;
+            
+            for (let i = 0; i <= segments; i++) {
+                const u = i / segments * Math.PI * 2;
+                const x = (2.5 + 1.5 * Math.cos(u)) * Math.cos(u);
+                const y = (2.5 + 1.5 * Math.cos(u)) * Math.sin(u);
+                const z = -3 * Math.sin(u);
+                points.push(new THREE.Vector3(x, y, z));
+            }
+            
+            return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 200, 0.3, 20, false);
+        }
+
+        function createMobiusStrip() {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const indices = [];
+            const segments = 100;
+            const width = 0.5;
+            
+            for (let i = 0; i <= segments; i++) {
+                const u = i / segments * Math.PI * 2;
+                const x = Math.cos(u) * (1 + width * Math.cos(u / 2));
+                const y = Math.sin(u) * (1 + width * Math.cos(u / 2));
+                const z = width * Math.sin(u / 2);
+                
+                vertices.push(x, y, z);
+                
+                if (i < segments) {
+                    indices.push(i, (i + 1) % (segments + 1), (i + segments + 1) % (2 * (segments + 1)));
+                    indices.push((i + 1) % (segments + 1), (i + segments + 2) % (2 * (segments + 1)), (i + segments + 1) % (2 * (segments + 1)));
+                }
+            }
+            
+            geometry.setIndex(indices);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.computeVertexNormals();
+            
+            return geometry;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate the mesh
+            mesh.rotation.x += 0.005;
+            mesh.rotation.y += 0.007;
+            
+            // Apply warp effect if enabled
+            if (warpEnabled) {
+                const time = Date.now() * 0.001;
+                const positions = mesh.geometry.attributes.position;
+                
+                for (let i = 0; i < positions.count; i++) {
+                    const x = positions.getX(i);
+                    const y = positions.getY(i);
+                    const z = positions.getZ(i);
+                    
+                    // Create a wave-like distortion based on mouse position
+                    const distortionX = Math.sin(y * 2 + time) * 0.2 * (mouseX / window.innerWidth - 0.5);
+                    const distortionY = Math.cos(x * 2 + time) * 0.2 * (mouseY / window.innerHeight - 0.5);
+                    const distortionZ = Math.sin(x * y + time) * 0.3;
+                    
+                    positions.setXYZ(
+                        i,
+                        x + distortionX,
+                        y + distortionY,
+                        z + distortionZ
+                    );
+                }
+                
+                positions.needsUpdate = true;
+                mesh.geometry.computeVertexNormals();
+            }
+            
+            // Update material color
+            material.color.setHSL((colorShift % 360) / 360, 0.8, 0.6);
+            material.emissive.setHSL(((colorShift + 120) % 360) / 360, 0.6, 0.3);
+            
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onMouseMove(event) {
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseWheel(event) {
+            camera.position.z += event.deltaY * 0.01;
+            camera.position.z = Math.max(2, Math.min(10, camera.position.z));
+        }
+
+        function onClick() {
+            colorShift = (colorShift + 30) % 360;
+        }
+
+        function changeShape() {
+            const shapes = ['torus', 'klein', 'sphere', 'mobius'];
+            currentShape = shapes[(shapes.indexOf(currentShape) + 1) % shapes.length];
+            createGeometry(currentShape);
+        }
+
+        function toggleWarp() {
+            warpEnabled = !warpEnabled;
+            document.getElementById('toggleWarp').textContent = 
+                warpEnabled ? 'Disable Warp' : 'Enable Warp';
+        }
+
+        function shiftColors() {
+            colorShift = (colorShift + 60) % 360;
+        }
+
+        // Initialize the scene
+        init();
+    </script>
+
+              
+          
+                
+          
+              
+</body></html>
